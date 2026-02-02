@@ -68,7 +68,8 @@ def decode_audio(audio_base64: str) -> str:
 @app.post("/detect-voice", response_model=VoiceResponse)
 def detect_voice(
     request: VoiceRequest,
-    Authorization: str = Header(None)
+    authorization: str = Header(None, alias="Authorization")
+
 ):
     # API key validation
     if Authorization != f"Bearer {API_KEY}":
