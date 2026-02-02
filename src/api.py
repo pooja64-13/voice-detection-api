@@ -1,5 +1,5 @@
 from fastapi import FastAPI, HTTPException, Header
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 import base64
 import tempfile
 import os
@@ -37,8 +37,12 @@ model = joblib.load(MODEL_PATH)
 # ----------------------
 
 class VoiceRequest(BaseModel):
-    audio_base64: str
+    # Accept BOTH audio_base64 and audioBase64
+    audio_base64: str = Field(..., alias="audioBase64")
     language: str
+
+    class Config:
+        populate_by_name = True
 
 
 class VoiceResponse(BaseModel):
@@ -68,11 +72,13 @@ def decode_audio(audio_base64: str) -> str:
 @app.post("/detect-voice", response_model=VoiceResponse)
 def detect_voice(
     request: VoiceRequest,
-    authorization: str = Header(None, alias="Authorization")
-
+    authorization: str = Header(None, alias="Authorization"),
+    x_api_key: str = Header(None, alias="x-api-key")
 ):
-    # API key validation
-    if Authorization != f"Bearer {API_KEY}":
+    # Accept BOTH Authorization and x-api-key
+    key = authorization or x_api_key
+
+    if key not in (API_KEY, f"Bearer {API_KEY}"):
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     audio_path = decode_audio(request.audio_base64)
@@ -86,7 +92,6 @@ def detect_voice(
         os.remove(audio_path)
 
     ai_prob = float(probs[1])
-
     classification = "AI_GENERATED" if ai_prob >= 0.5 else "HUMAN"
 
     explanation = {
